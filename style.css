@@ -1,119 +1,76 @@
-/* Retro DX-Ball Styling */
 body {
   margin: 0;
-  padding: 0;
   text-align: center;
+  background: #000;
   font-family: 'Press Start 2P', monospace;
-  color: #ffffff;
-  overflow-x: hidden;
-  background-color: #000;
+  color: #fff;
+  overflow: hidden;
+}
+
+canvas {
+  display: block;
+  margin: 0 auto;
+  background: transparent;
+}
+
+#stars {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  z-index: -2;
+  background: black;
+}
+
+#gameCanvas {
+  border: 3px solid white;
+  box-shadow: 0 0 20px cyan;
+  background-color: transparent;
+  position: relative;
+  z-index: 1;
 }
 
 h1 {
+  margin: 10px 0;
   font-size: 20px;
-  margin: 20px 0 10px;
-  color: #00f2ff;
-  text-shadow: 0 0 12px #00f2ff;
+  color: #0ff;
+  text-shadow: 0 0 12px #0ff;
 }
 
 #scoreboard {
   font-size: 12px;
-  margin-bottom: 10px;
-  color: #fefefe;
-  text-shadow: 0 0 8px #0ff;
-}
-
-canvas#gameCanvas {
-  border: 3px solid #fff;
-  box-shadow: 0 0 30px #0ff;
-  background: transparent;
-  z-index: 1;
-}
-
-canvas#stars {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: -1;
+  text-shadow: 0 0 5px #fff;
 }
 
 .mobile-controls {
-  margin-top: 20px;
-  display: none;
+  margin-top: 10px;
 }
 
 .mobile-controls button {
-  font-size: 28px;
-  padding: 10px 22px;
-  background: rgba(0, 0, 0, 0.6);
+  font-size: 18px;
+  margin: 5px;
+  padding: 10px 15px;
+  background: #111;
   color: #0ff;
   border: 2px solid #0ff;
-  border-radius: 10px;
-  margin: 0 10px;
+  border-radius: 8px;
   box-shadow: 0 0 10px #0ff;
-  cursor: pointer;
 }
 
-.hint {
-  font-size: 10px;
-  color: #aaa;
-  margin-top: 15px;
-  text-shadow: 0 0 5px #00f2ff;
+#introText {
+  font-size: 18px;
+  color: white;
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: fadeOut 2s forwards 2s;
+  z-index: 2;
+  text-shadow: 0 0 10px yellow;
 }
 
-@media (max-width: 768px) {
-  .mobile-controls {
-    display: block;
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+    transform: translate(-50%, -60%);
   }
-
-  canvas#gameCanvas {
-    width: 95% !important;
-    height: auto !important;
-  }
-
-  h1 {
-    font-size: 16px;
-  }
-
-  #scoreboard {
-    font-size: 10px;
-  }
-}
-
-/* Power-Up Booster Visuals */
-.booster-icon {
-  border-radius: 5px;
-  padding: 5px;
-  color: #fff;
-  font-size: 10px;
-  display: inline-block;
-  text-align: center;
-  animation: pulse 1s infinite alternate;
-}
-
-.booster-wide {
-  background-color: gold;
-  box-shadow: 0 0 10px gold;
-}
-
-.booster-life {
-  background-color: limegreen;
-  box-shadow: 0 0 10px lime;
-}
-
-.booster-slow {
-  background-color: cyan;
-  box-shadow: 0 0 10px cyan;
-}
-
-.booster-multi {
-  background-color: magenta;
-  box-shadow: 0 0 10px magenta;
-}
-
-@keyframes pulse {
-  0% { transform: scale(1); opacity: 1; }
-  100% { transform: scale(1.1); opacity: 0.7; }
 }
