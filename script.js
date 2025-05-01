@@ -1,5 +1,7 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
+// Brick colors cycle
+const brickColors = ['#e74c3c', '#f39c12', '#2ecc71', '#3498db', '#9b59b6'];
 
 // ===== Game State =====
 let score = 0;
@@ -113,7 +115,9 @@ function drawBricks() {
 
         ctx.beginPath();
         ctx.rect(brickX, brickY, brick.width, brick.height);
-        ctx.fillStyle = "#e74c3c";
+        ctx.fillStyle = brickColors[r % brickColors.length];
+        ctx.shadowColor = brickColors[r % brickColors.length];
+        ctx.shadowBlur = 10;
         ctx.fill();
         ctx.closePath();
       }
@@ -182,6 +186,16 @@ function draw() {
 
   balls.forEach(ball => {
     if (!ball.active) return;
+function drawBall(ball) {
+  if (!ball.active) return;
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+  ctx.fillStyle = "#00f2ff";
+  ctx.shadowColor = "#00f2ff";
+  ctx.shadowBlur = 15;
+  ctx.fill();
+  ctx.closePath();
+}
 
     // Ball movement
     ball.x += ball.dx;
