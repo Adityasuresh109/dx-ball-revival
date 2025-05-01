@@ -1,14 +1,10 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-// Brick colors cycle
-const brickColors = ['#e74c3c', '#f39c12', '#2ecc71', '#3498db', '#9b59b6'];
 
-// ===== Game State =====
 let score = 0;
 let highScore = localStorage.getItem("dxball_highscore") || 0;
 let lives = 3;
 
-// ===== Ball Setup =====
 let balls = [{
   x: canvas.width / 2,
   y: canvas.height - 30,
@@ -18,7 +14,6 @@ let balls = [{
   active: true
 }];
 
-// ===== Paddle Setup =====
 let paddle = {
   height: 15,
   width: 100,
@@ -29,7 +24,6 @@ let paddle = {
   originalWidth: 100
 };
 
-// ===== Brick Setup =====
 const brick = {
   rowCount: 5,
   colCount: 8,
@@ -40,7 +34,9 @@ const brick = {
   offsetLeft: 35
 };
 
+const brickColors = ['#e74c3c', '#f39c12', '#2ecc71', '#3498db', '#9b59b6'];
 let bricks = [];
+
 for (let c = 0; c < brick.colCount; c++) {
   bricks[c] = [];
   for (let r = 0; r < brick.rowCount; r++) {
@@ -48,7 +44,6 @@ for (let c = 0; c < brick.colCount; c++) {
   }
 }
 
-// ===== Power-Up Setup =====
 let powerUps = [];
 
 const powerUpTypes = ["wide", "life", "slow", "multi"];
@@ -86,12 +81,13 @@ const powerUpEffects = {
   }
 };
 
-// ===== Draw Functions =====
 function drawBall(ball) {
   if (!ball.active) return;
   ctx.beginPath();
   ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
   ctx.fillStyle = "#00f2ff";
+  ctx.shadowColor = "#00f2ff";
+  ctx.shadowBlur = 15;
   ctx.fill();
   ctx.closePath();
 }
@@ -100,6 +96,8 @@ function drawPaddle() {
   ctx.beginPath();
   ctx.rect(paddle.x, canvas.height - paddle.height - 10, paddle.width, paddle.height);
   ctx.fillStyle = "#f39c12";
+  ctx.shadowColor = "#f39c12";
+  ctx.shadowBlur = 8;
   ctx.fill();
   ctx.closePath();
 }
@@ -130,12 +128,13 @@ function drawPowerUps() {
     ctx.beginPath();
     ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
     ctx.fillStyle = p.color;
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur = 10;
     ctx.fill();
     ctx.closePath();
   });
 }
 
-// ===== Collision & Game Logic =====
 function collisionDetection(ball) {
   for (let c = 0; c < brick.colCount; c++) {
     for (let r = 0; r < brick.rowCount; r++) {
@@ -148,7 +147,6 @@ function collisionDetection(ball) {
         score++;
         updateUI();
 
-        // Drop power-up 10% of the time
         if (Math.random() < 0.1) {
           const type = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
           powerUps.push({
@@ -186,26 +184,12 @@ function draw() {
 
   balls.forEach(ball => {
     if (!ball.active) return;
-function drawBall(ball) {
-  if (!ball.active) return;
-  ctx.beginPath();
-  ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-  ctx.fillStyle = "#00f2ff";
-  ctx.shadowColor = "#00f2ff";
-  ctx.shadowBlur = 15;
-  ctx.fill();
-  ctx.closePath();
-}
-
-    // Ball movement
     ball.x += ball.dx;
     ball.y += ball.dy;
 
-    // Wall collisions
     if (ball.x < ball.radius || ball.x > canvas.width - ball.radius) ball.dx *= -1;
     if (ball.y < ball.radius) ball.dy *= -1;
 
-    // Paddle collision
     if (
       ball.y + ball.radius >= canvas.height - paddle.height - 10 &&
       ball.x > paddle.x && ball.x < paddle.x + paddle.width
@@ -213,23 +197,17 @@ function drawBall(ball) {
       ball.dy *= -1;
     }
 
-    // Missed ball
-    if (ball.y + ball.radius > canvas.height) {
-      ball.active = false;
-    }
+    if (ball.y + ball.radius > canvas.height) ball.active = false;
 
-    // Brick collisions
     collisionDetection(ball);
   });
 
-  // Remove inactive balls
   balls = balls.filter(b => b.active);
   if (balls.length === 0) {
     lives--;
     updateUI();
     if (lives === 0) {
       alert("😢 GAME OVER!");
-      score = 0;
       localStorage.setItem("dxball_highscore", highScore);
       document.location.reload();
     } else {
@@ -245,11 +223,40 @@ function drawBall(ball) {
     }
   }
 
-  // Paddle movement
   if (paddle.movingRight && paddle.x < canvas.width - paddle.width) paddle.x += paddle.dx;
   if (paddle.movingLeft && paddle.x > 0) paddle.x -= paddle.dx;
 
-  // Power-up fall & collection
   powerUps.forEach((p, i) => {
     p.y += 3;
-    if
+    if (
+      p.y > canvas.height - paddle.height - 10 &&
+      p.x > paddle.x && p.x < paddle.x + paddle.width
+    ) {
+      powerUpEffects[p.type]();
+      powerUps.splice(i, 1);
+    } else if (p.y > canvas.height) {
+      powerUps.splice(i, 1);
+    }
+  });
+
+  requestAnimationFrame(draw);
+}
+
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowRight") paddle.movingRight = true;
+  if (e.key === "ArrowLeft") paddle.movingLeft = true;
+});
+
+document.addEventListener("keyup", e => {
+  if (e.key === "ArrowRight") paddle.movingRight = false;
+  if (e.key === "ArrowLeft") paddle.movingLeft = false;
+});
+
+// Mobile controls
+document.getElementById("leftBtn").addEventListener("touchstart", () => paddle.movingLeft = true);
+document.getElementById("leftBtn").addEventListener("touchend", () => paddle.movingLeft = false);
+document.getElementById("rightBtn").addEventListener("touchstart", () => paddle.movingRight = true);
+document.getElementById("rightBtn").addEventListener("touchend", () => paddle.movingRight = false);
+
+updateUI();
+draw();
