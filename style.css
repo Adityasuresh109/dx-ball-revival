@@ -1,1 +1,16 @@
+body {
+  text-align: center;
+  background: #0e0e0e;
+  color: #fff;
+  font-family: 'Segoe UI', sans-serif;
+}
 
+#scoreboard {
+  margin-bottom: 10px;
+  font-size: 20px;
+}
+
+canvas {
+  border: 2px solid #fff;
+  background-color: #111;
+}
