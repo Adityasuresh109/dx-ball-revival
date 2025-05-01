@@ -27,18 +27,6 @@ canvas {
   background: #000;
 }
 
-/* Power-up visual pulses */
-.powerup-anim {
-  animation: pulse 1s infinite;
-}
-
-@keyframes pulse {
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.2); opacity: 0.6; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-/* Mobile control buttons */
 .mobile-controls {
   margin-top: 20px;
   display: none;
