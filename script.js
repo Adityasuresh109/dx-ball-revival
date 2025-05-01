@@ -15,13 +15,12 @@ let balls = [{
 }];
 
 let paddle = {
-  height: 15,
   width: 100,
+  height: 15,
   x: (canvas.width - 100) / 2,
   dx: 7,
   movingLeft: false,
-  movingRight: false,
-  originalWidth: 100
+  movingRight: false
 };
 
 const brick = {
@@ -36,7 +35,6 @@ const brick = {
 
 const brickColors = ['#e74c3c', '#f39c12', '#2ecc71', '#3498db', '#9b59b6'];
 let bricks = [];
-
 for (let c = 0; c < brick.colCount; c++) {
   bricks[c] = [];
   for (let r = 0; r < brick.rowCount; r++) {
@@ -46,37 +44,28 @@ for (let c = 0; c < brick.colCount; c++) {
 
 let powerUps = [];
 const powerUpTypes = ["wide", "life", "slow", "multi"];
+const powerUpIcons = {
+  wide: "⇔",
+  life: "❤️",
+  slow: "🐌",
+  multi: "⚪⚪"
+};
+
 const powerUpEffects = {
   wide: () => {
     paddle.width = 150;
-    setTimeout(() => paddle.width = paddle.originalWidth, 10000);
+    setTimeout(() => paddle.width = 100, 10000);
   },
   life: () => {
     lives++;
-    updateUI();
   },
   slow: () => {
-    balls.forEach(b => {
-      b.dx *= 0.5;
-      b.dy *= 0.5;
-    });
-    setTimeout(() => {
-      balls.forEach(b => {
-        b.dx *= 2;
-        b.dy *= 2;
-      });
-    }, 10000);
+    balls.forEach(b => { b.dx *= 0.5; b.dy *= 0.5; });
+    setTimeout(() => balls.forEach(b => { b.dx *= 2; b.dy *= 2; }), 10000);
   },
   multi: () => {
-    const mainBall = balls[0];
-    balls.push({
-      x: mainBall.x,
-      y: mainBall.y,
-      dx: -mainBall.dx,
-      dy: -mainBall.dy,
-      radius: 10,
-      active: true
-    });
+    const ball = balls[0];
+    balls.push({ x: ball.x, y: ball.y, dx: -ball.dx, dy: -ball.dy, radius: 10, active: true });
   }
 };
 
@@ -96,7 +85,7 @@ function drawPaddle() {
   ctx.rect(paddle.x, canvas.height - paddle.height - 10, paddle.width, paddle.height);
   ctx.fillStyle = "#f39c12";
   ctx.shadowColor = "#f39c12";
-  ctx.shadowBlur = 8;
+  ctx.shadowBlur = 10;
   ctx.fill();
   ctx.closePath();
 }
@@ -123,30 +112,15 @@ function drawBricks() {
 }
 
 function drawPowerUps() {
+  ctx.font = "12px 'Press Start 2P'";
   powerUps.forEach(p => {
-    ctx.beginPath();
-    if (p.type === "life") {
-      ctx.arc(p.x, p.y, 10, 0, Math.PI * 2); // heart-ish orb
-      ctx.fillStyle = "lime";
-      ctx.shadowColor = "lime";
-    } else if (p.type === "wide") {
-      ctx.rect(p.x - 12, p.y - 5, 24, 10);
-      ctx.fillStyle = "gold";
-      ctx.shadowColor = "gold";
-    } else if (p.type === "slow") {
-      ctx.moveTo(p.x, p.y);
-      ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
-      ctx.fillStyle = "cyan";
-      ctx.shadowColor = "cyan";
-    } else if (p.type === "multi") {
-      ctx.moveTo(p.x, p.y);
-      ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
-      ctx.fillStyle = "magenta";
-      ctx.shadowColor = "magenta";
-    }
+    ctx.save();
+    ctx.fillStyle = "#fff";
     ctx.shadowBlur = 10;
-    ctx.fill();
-    ctx.closePath();
+    ctx.shadowColor = "#fff";
+    ctx.textAlign = "center";
+    ctx.fillText(powerUpIcons[p.type], p.x, p.y);
+    ctx.restore();
   });
 }
 
@@ -154,27 +128,15 @@ function collisionDetection(ball) {
   for (let c = 0; c < brick.colCount; c++) {
     for (let r = 0; r < brick.rowCount; r++) {
       const b = bricks[c][r];
-      if (b.status === 1 &&
-        ball.x > b.x && ball.x < b.x + brick.width &&
-        ball.y > b.y && ball.y < b.y + brick.height) {
+      if (b.status && ball.x > b.x && ball.x < b.x + brick.width && ball.y > b.y && ball.y < b.y + brick.height) {
         ball.dy *= -1;
         b.status = 0;
         score++;
-        updateUI();
-
         if (Math.random() < 0.1) {
-          const type = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
-          powerUps.push({
-            x: b.x + brick.width / 2,
-            y: b.y,
-            type: type
-          });
+          powerUps.push({ x: b.x + brick.width / 2, y: b.y, type: powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)] });
         }
-
         if (score === brick.rowCount * brick.colCount) {
-          if (score > highScore) {
-            localStorage.setItem("dxball_highscore", score);
-          }
+          if (score > highScore) localStorage.setItem("dxball_highscore", score);
           alert("🎉 YOU WIN!");
           document.location.reload();
         }
@@ -204,35 +166,22 @@ function draw() {
     if (ball.x < ball.radius || ball.x > canvas.width - ball.radius) ball.dx *= -1;
     if (ball.y < ball.radius) ball.dy *= -1;
 
-    if (
-      ball.y + ball.radius >= canvas.height - paddle.height - 10 &&
-      ball.x > paddle.x && ball.x < paddle.x + paddle.width
-    ) {
+    if (ball.y + ball.radius >= canvas.height - paddle.height - 10 && ball.x > paddle.x && ball.x < paddle.x + paddle.width) {
       ball.dy *= -1;
     }
 
-    if (ball.y + ball.radius > canvas.height) ball.active = false;
-
+    if (ball.y > canvas.height) ball.active = false;
     collisionDetection(ball);
   });
 
   balls = balls.filter(b => b.active);
   if (balls.length === 0) {
     lives--;
-    updateUI();
     if (lives === 0) {
       alert("😢 GAME OVER!");
-      localStorage.setItem("dxball_highscore", highScore);
       document.location.reload();
     } else {
-      balls = [{
-        x: canvas.width / 2,
-        y: canvas.height - 30,
-        dx: 4,
-        dy: -4,
-        radius: 10,
-        active: true
-      }];
+      balls = [{ x: canvas.width / 2, y: canvas.height - 30, dx: 4, dy: -4, radius: 10, active: true }];
       paddle.x = (canvas.width - paddle.width) / 2;
     }
   }
@@ -241,11 +190,8 @@ function draw() {
   if (paddle.movingLeft && paddle.x > 0) paddle.x -= paddle.dx;
 
   powerUps.forEach((p, i) => {
-    p.y += 3;
-    if (
-      p.y > canvas.height - paddle.height - 10 &&
-      p.x > paddle.x && p.x < paddle.x + paddle.width
-    ) {
+    p.y += 2;
+    if (p.y > canvas.height - paddle.height - 10 && p.x > paddle.x && p.x < paddle.x + paddle.width) {
       powerUpEffects[p.type]();
       powerUps.splice(i, 1);
     } else if (p.y > canvas.height) {
@@ -253,6 +199,7 @@ function draw() {
     }
   });
 
+  updateUI();
   requestAnimationFrame(draw);
 }
 
@@ -265,10 +212,14 @@ document.addEventListener("keyup", e => {
   if (e.key === "ArrowLeft") paddle.movingLeft = false;
 });
 
-// Mobile tilt controls
+document.getElementById("leftBtn").addEventListener("touchstart", () => paddle.movingLeft = true);
+document.getElementById("leftBtn").addEventListener("touchend", () => paddle.movingLeft = false);
+document.getElementById("rightBtn").addEventListener("touchstart", () => paddle.movingRight = true);
+document.getElementById("rightBtn").addEventListener("touchend", () => paddle.movingRight = false);
+
 if (window.DeviceOrientationEvent) {
-  window.addEventListener("deviceorientation", (event) => {
-    const tilt = event.gamma; // left/right in degrees
+  window.addEventListener("deviceorientation", (e) => {
+    const tilt = e.gamma;
     if (tilt > 10) {
       paddle.movingRight = true;
       paddle.movingLeft = false;
@@ -281,12 +232,6 @@ if (window.DeviceOrientationEvent) {
     }
   });
 }
-
-// Touch fallback controls
-document.getElementById("leftBtn").addEventListener("touchstart", () => paddle.movingLeft = true);
-document.getElementById("leftBtn").addEventListener("touchend", () => paddle.movingLeft = false);
-document.getElementById("rightBtn").addEventListener("touchstart", () => paddle.movingRight = true);
-document.getElementById("rightBtn").addEventListener("touchend", () => paddle.movingRight = false);
 
 updateUI();
 draw();
