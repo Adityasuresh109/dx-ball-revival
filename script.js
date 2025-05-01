@@ -1,29 +1,33 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
+// ===== Game State =====
 let score = 0;
+let highScore = localStorage.getItem("dxball_highscore") || 0;
 let lives = 3;
 
-// Ball setup
-let ball = {
+// ===== Ball Setup =====
+let balls = [{
   x: canvas.width / 2,
   y: canvas.height - 30,
   dx: 4,
   dy: -4,
-  radius: 10
-};
+  radius: 10,
+  active: true
+}];
 
-// Paddle setup
+// ===== Paddle Setup =====
 let paddle = {
   height: 15,
   width: 100,
   x: (canvas.width - 100) / 2,
   dx: 7,
   movingLeft: false,
-  movingRight: false
+  movingRight: false,
+  originalWidth: 100
 };
 
-// Bricks setup
+// ===== Brick Setup =====
 const brick = {
   rowCount: 5,
   colCount: 8,
@@ -42,8 +46,47 @@ for (let c = 0; c < brick.colCount; c++) {
   }
 }
 
-// Draw ball
-function drawBall() {
+// ===== Power-Up Setup =====
+let powerUps = [];
+
+const powerUpTypes = ["wide", "life", "slow", "multi"];
+const powerUpEffects = {
+  wide: () => {
+    paddle.width = 150;
+    setTimeout(() => paddle.width = paddle.originalWidth, 10000);
+  },
+  life: () => {
+    lives++;
+    updateUI();
+  },
+  slow: () => {
+    balls.forEach(b => {
+      b.dx *= 0.5;
+      b.dy *= 0.5;
+    });
+    setTimeout(() => {
+      balls.forEach(b => {
+        b.dx *= 2;
+        b.dy *= 2;
+      });
+    }, 10000);
+  },
+  multi: () => {
+    const mainBall = balls[0];
+    balls.push({
+      x: mainBall.x,
+      y: mainBall.y,
+      dx: -mainBall.dx,
+      dy: -mainBall.dy,
+      radius: 10,
+      active: true
+    });
+  }
+};
+
+// ===== Draw Functions =====
+function drawBall(ball) {
+  if (!ball.active) return;
   ctx.beginPath();
   ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
   ctx.fillStyle = "#00f2ff";
@@ -51,7 +94,6 @@ function drawBall() {
   ctx.closePath();
 }
 
-// Draw paddle
 function drawPaddle() {
   ctx.beginPath();
   ctx.rect(paddle.x, canvas.height - paddle.height - 10, paddle.width, paddle.height);
@@ -60,7 +102,6 @@ function drawPaddle() {
   ctx.closePath();
 }
 
-// Draw bricks
 function drawBricks() {
   for (let c = 0; c < brick.colCount; c++) {
     for (let r = 0; r < brick.rowCount; r++) {
@@ -80,91 +121,121 @@ function drawBricks() {
   }
 }
 
-// Collision detection
-function collisionDetection() {
+function drawPowerUps() {
+  powerUps.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.fill();
+    ctx.closePath();
+  });
+}
+
+// ===== Collision & Game Logic =====
+function collisionDetection(ball) {
   for (let c = 0; c < brick.colCount; c++) {
     for (let r = 0; r < brick.rowCount; r++) {
       const b = bricks[c][r];
-      if (b.status === 1) {
-        if (
-          ball.x > b.x &&
-          ball.x < b.x + brick.width &&
-          ball.y > b.y &&
-          ball.y < b.y + brick.height
-        ) {
-          ball.dy *= -1;
-          b.status = 0;
-          score++;
-          document.getElementById("score").textContent = score;
+      if (b.status === 1 &&
+        ball.x > b.x && ball.x < b.x + brick.width &&
+        ball.y > b.y && ball.y < b.y + brick.height) {
+        ball.dy *= -1;
+        b.status = 0;
+        score++;
+        updateUI();
 
-          if (score === brick.rowCount * brick.colCount) {
-            alert("🎉 YOU WIN!");
-            document.location.reload();
+        // Drop power-up 10% of the time
+        if (Math.random() < 0.1) {
+          const type = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+          powerUps.push({
+            x: b.x + brick.width / 2,
+            y: b.y,
+            type: type,
+            color: type === "life" ? "lime" : type === "wide" ? "gold" : "aqua"
+          });
+        }
+
+        if (score === brick.rowCount * brick.colCount) {
+          if (score > highScore) {
+            localStorage.setItem("dxball_highscore", score);
           }
+          alert("🎉 YOU WIN!");
+          document.location.reload();
         }
       }
     }
   }
 }
 
-// Draw everything
+function updateUI() {
+  document.getElementById("score").textContent = score;
+  document.getElementById("lives").textContent = lives;
+  document.getElementById("highscore").textContent = highScore;
+}
+
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawBall();
   drawPaddle();
   drawBricks();
-  collisionDetection();
+  drawPowerUps();
+  balls.forEach(drawBall);
 
-  // Ball movement
-  ball.x += ball.dx;
-  ball.y += ball.dy;
+  balls.forEach(ball => {
+    if (!ball.active) return;
 
-  // Wall collisions
-  if (ball.x + ball.dx > canvas.width - ball.radius || ball.x + ball.dx < ball.radius) {
-    ball.dx *= -1;
-  }
+    // Ball movement
+    ball.x += ball.dx;
+    ball.y += ball.dy;
 
-  if (ball.y + ball.dy < ball.radius) {
-    ball.dy *= -1;
-  } else if (ball.y + ball.dy > canvas.height - ball.radius - paddle.height) {
-    if (ball.x > paddle.x && ball.x < paddle.x + paddle.width) {
+    // Wall collisions
+    if (ball.x < ball.radius || ball.x > canvas.width - ball.radius) ball.dx *= -1;
+    if (ball.y < ball.radius) ball.dy *= -1;
+
+    // Paddle collision
+    if (
+      ball.y + ball.radius >= canvas.height - paddle.height - 10 &&
+      ball.x > paddle.x && ball.x < paddle.x + paddle.width
+    ) {
       ball.dy *= -1;
-    } else if (ball.y + ball.dy > canvas.height - ball.radius) {
-      lives--;
-      document.getElementById("lives").textContent = lives;
+    }
 
-      if (!lives) {
-        alert("😢 GAME OVER!");
-        document.location.reload();
-      } else {
-        ball.x = canvas.width / 2;
-        ball.y = canvas.height - 30;
-        ball.dx = 4;
-        ball.dy = -4;
-        paddle.x = (canvas.width - paddle.width) / 2;
-      }
+    // Missed ball
+    if (ball.y + ball.radius > canvas.height) {
+      ball.active = false;
+    }
+
+    // Brick collisions
+    collisionDetection(ball);
+  });
+
+  // Remove inactive balls
+  balls = balls.filter(b => b.active);
+  if (balls.length === 0) {
+    lives--;
+    updateUI();
+    if (lives === 0) {
+      alert("😢 GAME OVER!");
+      score = 0;
+      localStorage.setItem("dxball_highscore", highScore);
+      document.location.reload();
+    } else {
+      balls = [{
+        x: canvas.width / 2,
+        y: canvas.height - 30,
+        dx: 4,
+        dy: -4,
+        radius: 10,
+        active: true
+      }];
+      paddle.x = (canvas.width - paddle.width) / 2;
     }
   }
 
   // Paddle movement
-  if (paddle.movingRight && paddle.x < canvas.width - paddle.width) {
-    paddle.x += paddle.dx;
-  } else if (paddle.movingLeft && paddle.x > 0) {
-    paddle.x -= paddle.dx;
-  }
+  if (paddle.movingRight && paddle.x < canvas.width - paddle.width) paddle.x += paddle.dx;
+  if (paddle.movingLeft && paddle.x > 0) paddle.x -= paddle.dx;
 
-  requestAnimationFrame(draw);
-}
-
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Right" || e.key === "ArrowRight") paddle.movingRight = true;
-  if (e.key === "Left" || e.key === "ArrowLeft") paddle.movingLeft = true;
-});
-
-document.addEventListener("keyup", (e) => {
-  if (e.key === "Right" || e.key === "ArrowRight") paddle.movingRight = false;
-  if (e.key === "Left" || e.key === "ArrowLeft") paddle.movingLeft = false;
-});
-
-draw();
-
+  // Power-up fall & collection
+  powerUps.forEach((p, i) => {
+    p.y += 3;
+    if
