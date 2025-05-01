@@ -4,13 +4,24 @@
   <meta charset="UTF-8">
   <title>DX-Ball Revival</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+  </style>
 </head>
 <body>
-  <h1>DX-Ball Revival 🎮</h1>
+  <h1>DX-BALL REVIVAL ⚡</h1>
   <div id="scoreboard">
-  Score: <span id="score">0</span> | Lives: <span id="lives">3</span> | High Score: <span id="highscore">0</span>
-</div>
+    Score: <span id="score">0</span> | Lives: <span id="lives">3</span> | High Score: <span id="highscore">0</span>
+  </div>
+
   <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+  <!-- Mobile Controls -->
+  <div class="mobile-controls">
+    <button id="leftBtn">◀️</button>
+    <button id="rightBtn">▶️</button>
+  </div>
+
   <script src="script.js"></script>
 </body>
 </html>
