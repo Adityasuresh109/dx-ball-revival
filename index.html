@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DX-Ball Revival</title>
   <link rel="stylesheet" href="style.css" />
   <style>
@@ -10,10 +9,10 @@
   </style>
 </head>
 <body>
-  <!-- Starfield Background -->
+  <!-- Galaxy Starfield Layer -->
   <canvas id="stars"></canvas>
 
-  <h1>DX-BALL REVIVAL ✨</h1>
+  <h1>DX-BALL REVIVAL ⚡</h1>
   <div id="scoreboard">
     Score: <span id="score">0</span> |
     Lives: <span id="lives">3</span> |
@@ -22,55 +21,15 @@
 
   <canvas id="gameCanvas" width="800" height="600"></canvas>
 
+  <!-- Mobile Buttons -->
   <div class="mobile-controls">
     <button id="leftBtn">◀️</button>
     <button id="rightBtn">▶️</button>
+    <button id="enableTilt">📱 Enable Tilt</button>
   </div>
 
-  <p class="hint">Tilt your phone to move the paddle 🎮</p>
+  <div id="introText">GET READY</div>
 
   <script src="script.js"></script>
-  <script>
-    // Starfield Canvas Background Animation
-    const starCanvas = document.getElementById('stars');
-    const starCtx = starCanvas.getContext('2d');
-    starCanvas.width = window.innerWidth;
-    starCanvas.height = window.innerHeight;
-
-    let stars = [];
-    for (let i = 0; i < 200; i++) {
-      stars.push({
-        x: Math.random() * starCanvas.width,
-        y: Math.random() * starCanvas.height,
-        radius: Math.random() * 1.5,
-        velocity: Math.random() * 0.7 + 0.2
-      });
-    }
-
-    function drawStars() {
-      starCtx.fillStyle = '#000011';
-      starCtx.fillRect(0, 0, starCanvas.width, starCanvas.height);
-
-      for (let star of stars) {
-        starCtx.beginPath();
-        starCtx.arc(star.x, star.y, star.radius, 0, 2 * Math.PI);
-        starCtx.fillStyle = 'white';
-        starCtx.fill();
-
-        star.y += star.velocity;
-        if (star.y > starCanvas.height) {
-          star.y = 0;
-          star.x = Math.random() * starCanvas.width;
-        }
-      }
-      requestAnimationFrame(drawStars);
-    }
-    drawStars();
-
-    window.addEventListener("resize", () => {
-      starCanvas.width = window.innerWidth;
-      starCanvas.height = window.innerHeight;
-    });
-  </script>
 </body>
 </html>
