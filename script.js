@@ -23,6 +23,7 @@ const gotoMenu   = document.getElementById('gotoMenu');
 const themeSelect = document.getElementById('themeSelect');
 const musicToggle = document.getElementById('musicToggle');
 const sfxToggle   = document.getElementById('sfxToggle');
+const tiltToggle  = document.getElementById('tiltToggle');
 const restartBtn  = document.getElementById('restartBtn');
 const btnMenu     = document.getElementById('btnMenu');
 
@@ -63,11 +64,11 @@ const G = {
   level: 1,
   score: 0,
   lives: 3,
-  high: +localStorage.getItem('dx2025_high') || 0,
+  high: +localStorage.getItem('pb_high') || 0,
   running: false,
   mode: 'classic',           // classic | time | obstacles
   difficulty: 1.0,           // multiplier
-  analytics: JSON.parse(localStorage.getItem('dx2025_analytics') || '{}'),
+  analytics: JSON.parse(localStorage.getItem('pb_analytics') || '{}'),
 };
 hud.high.textContent = G.high;
 
@@ -98,6 +99,50 @@ cvs.addEventListener('touchstart', e=>{
 });
 cvs.addEventListener('touchend', ()=>{ input.left=false; input.right=false; });
 
+/* =================== TILT CONTROL =================== */
+let tiltEnabled = false;
+let tiltZero = null;
+let tiltVal = 0;
+const tiltSmooth = 0.2;
+const tiltSensitivity = 0.9;  // pixels per frame per degree
+const tiltDeadzone = 2.0;
+
+async function requestTiltPermission() {
+  try {
+    const needPerm = typeof DeviceOrientationEvent !== 'undefined'
+      && typeof DeviceOrientationEvent.requestPermission === 'function';
+    if (needPerm) {
+      const res = await DeviceOrientationEvent.requestPermission();
+      return res === 'granted';
+    }
+    return true;
+  } catch { return false; }
+}
+function handleOrientation(e) {
+  if (typeof e.gamma !== 'number') return;
+  if (tiltZero === null) tiltZero = e.gamma;
+  const delta = e.gamma - tiltZero;
+  const dz = Math.abs(delta) < tiltDeadzone ? 0 : delta;
+  tiltVal = tiltVal * (1 - tiltSmooth) + dz * tiltSmooth;
+}
+async function enableTilt() {
+  const granted = await requestTiltPermission();
+  if (!granted) { alert('Motion access denied. Tilt will stay off.'); return; }
+  if (!tiltEnabled) {
+    tiltEnabled = true; tiltZero = null; tiltVal = 0;
+    window.addEventListener('deviceorientation', handleOrientation);
+  }
+}
+function disableTilt() {
+  tiltEnabled = false;
+  window.removeEventListener('deviceorientation', handleOrientation);
+  tiltZero = null; tiltVal = 0;
+}
+tiltToggle.addEventListener('change', async () => {
+  if (tiltToggle.checked) await enableTilt();
+  else disableTilt();
+});
+
 /* =================== AUDIO =================== */
 function playSFX(el) { if (sfxToggle.checked) { try { el.currentTime = 0; el.play(); } catch{} } }
 if (musicToggle.checked) { bgm.play().catch(()=>{}); }
@@ -116,7 +161,7 @@ instructionsBtn.addEventListener('click', ()=>showScreen('instructions'));
 backFromInstructions.addEventListener('click', ()=>showScreen('home'));
 leaderboardBtn.addEventListener('click', ()=>{ renderLB(); showScreen('leaderboard'); });
 backFromLB.addEventListener('click', ()=>showScreen('home'));
-clearLB.addEventListener('click', ()=>{ localStorage.removeItem('dx2025_lb'); renderLB(); });
+clearLB.addEventListener('click', ()=>{ localStorage.removeItem('pb_lb'); renderLB(); });
 
 themeThumbs.forEach(b=>{
   b.addEventListener('click', ()=>{
@@ -130,17 +175,21 @@ themeSelect.addEventListener('change', ()=>{
   document.body.className = themeSelect.value + ' no-scroll';
 });
 
-startBtn.addEventListener('click', ()=>{
+startBtn.addEventListener('click', async ()=>{
   G.mode = modeSelect.value;
   G.difficulty = parseFloat(difficulty.value);
-  showScreen(); // hide all
+  showScreen(); // hide all overlays
+  if (tiltToggle.checked) await enableTilt();
   hardReset(true);
 });
-restartBtn.addEventListener('click', ()=> hardReset(false));
+restartBtn.addEventListener('click', async ()=>{
+  if (tiltToggle.checked) await enableTilt();
+  hardReset(false);
+});
 
 /* =================== LEADERBOARD =================== */
-function getLB() { return JSON.parse(localStorage.getItem('dx2025_lb') || '[]'); }
-function setLB(list) { localStorage.setItem('dx2025_lb', JSON.stringify(list.slice(0,10))); }
+function getLB() { return JSON.parse(localStorage.getItem('pb_lb') || '[]'); }
+function setLB(list) { localStorage.setItem('pb_lb', JSON.stringify(list.slice(0,10))); }
 function pushLB(score, theme) {
   const list = getLB();
   list.push({ score, theme, date: Date.now() });
@@ -163,7 +212,7 @@ function updateHUD() {
   hud.score.textContent = G.score;
   hud.lives.textContent = G.lives;
   hud.level.textContent = G.level;
-  if (G.score > G.high) { G.high = G.score; localStorage.setItem('dx2025_high', G.high); }
+  if (G.score > G.high) { G.high = G.score; localStorage.setItem('pb_high', G.high); }
   hud.high.textContent = G.high;
 }
 
@@ -177,12 +226,10 @@ function buildLevel() {
   for (let c=0;c<BRICK.cols;c++){
     bricks[c] = [];
     for (let r=0;r<BRICK.rows;r++){
-      // HP scales with level, alternate by row
       const hp = 1 + Math.floor((G.level-1)/2) + (r%2);
       bricks[c][r] = { x:0,y:0, alive:true, hp };
     }
   }
-  // Obstacles mode: mark gaps / blocks
   if (G.mode === 'obstacles') {
     for (let i=0;i<8;i++) {
       const c = (Math.random()*BRICK.cols)|0;
@@ -265,11 +312,9 @@ function applyPowerup(t) {
     ball.vx *= 0.7; ball.vy *= 0.7; setTimeout(()=>{ball.vx/=0.7; ball.vy/=0.7;}, 9000);
   }
   if (t==='multi') {
-    // Score bonus + small particle burst (simple sub for true multiball)
     G.score += 10; updateHUD(); playSFX(sfxPow); burst(ball.x, ball.y, getThemeName());
   }
   if (t==='fire') {
-    // Temporarily boost pierce damage (implemented as higher speed)
     const k = 1.25; ball.vx *= k; ball.vy *= k; setTimeout(()=>{ball.vx/=k; ball.vy/=k;}, 8000);
   }
 }
@@ -278,10 +323,8 @@ function applyPowerup(t) {
 function loop(now) {
   if (!G.running) return;
   const dt = Math.min(32, now - lastTime); lastTime = now;
-
   step(dt);
   draw(dt);
-
   requestAnimationFrame(loop);
 }
 
@@ -293,12 +336,18 @@ function step(dt) {
     if (timeLeft <= 0) return gameOver();
   }
 
-  // Paddle
+  // Paddle: touch/keys
   if (input.left)  paddle.x = Math.max(0, paddle.x - paddle.vx);
   if (input.right) paddle.x = Math.min(cvs.width - paddle.w, paddle.x + paddle.vx);
 
+  // Paddle: tilt add-on
+  if (tiltEnabled) {
+    const dx = tiltVal * tiltSensitivity;
+    paddle.x = Math.max(0, Math.min(cvs.width - paddle.w, paddle.x + dx));
+  }
+
   // Ball
-  if (ball.stuck) { ball.x = paddle.x + paddle.w/2; ball.y = paddle.y - ball.r - 2; }
+  if (ball.stuck) { ball.x = paddle.x + paddle.w/2; ball.y = paddle.y - BALL.r - 2; }
   else { ball.x += ball.vx; ball.y += ball.vy; }
 
   // Trail
@@ -378,10 +427,6 @@ function step(dt) {
 }
 
 /* =================== DRAW =================== */
-function drawBackground() {
-  // Subtle per-theme motion (stars/embers/frost shimmer)
-  // Kept light for performance; can be expanded with offscreen canvas later.
-}
 function drawPaddle() {
   ctx.save();
   ctx.shadowColor = getCSS('--glow'); ctx.shadowBlur = 18;
@@ -421,27 +466,22 @@ function drawBricks() {
 
     const theme = getThemeName();
     if (theme==='galaxy') {
-      // asteroid: dark base + glowing crystal veins
       ctx.fillStyle = '#1a1f2b';
       roundRect(ctx, b.x, b.y, BRICK.w, BRICK.h, 4); ctx.fill();
-      ctx.fillStyle = getCSS('--brickB');
-      ctx.globalAlpha = .35;
+      ctx.fillStyle = getCSS('--brickB'); ctx.globalAlpha = .35;
       ctx.fillRect(b.x+6, b.y+4, BRICK.w-12, BRICK.h-8);
     } else if (theme==='neon') {
-      // glass: transparent center + neon outline
       ctx.globalAlpha = .25; ctx.fillStyle = '#ffffff';
       roundRect(ctx, b.x, b.y, BRICK.w, BRICK.h, 6); ctx.fill();
       ctx.globalAlpha = 1; ctx.strokeStyle = getCSS('--brickA'); ctx.lineWidth = 3;
       roundRect(ctx, b.x+2, b.y+2, BRICK.w-4, BRICK.h-4, 6); ctx.stroke();
     } else if (theme==='ice') {
-      // frosted block with light crack
       const g = ctx.createLinearGradient(b.x, b.y, b.x, b.y+BRICK.h);
       g.addColorStop(0, '#cfe9ff'); g.addColorStop(1, '#8cc7ff');
       ctx.fillStyle = g; roundRect(ctx, b.x, b.y, BRICK.w, BRICK.h, 5); ctx.fill();
       ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.beginPath();
       ctx.moveTo(b.x+6, b.y+BRICK.h/2); ctx.lineTo(b.x+BRICK.w-6, b.y+BRICK.h/2+2); ctx.stroke();
     } else {
-      // inferno: lava cracks
       const g = ctx.createLinearGradient(b.x, b.y, b.x, b.y+BRICK.h);
       g.addColorStop(0, '#ff7b00'); g.addColorStop(1, '#6a2400');
       ctx.fillStyle = g; roundRect(ctx, b.x, b.y, BRICK.w, BRICK.h, 4); ctx.fill();
@@ -459,7 +499,6 @@ function drawPowerup(p) {
   ctx.shadowColor = getCSS('--glow'); ctx.shadowBlur = 14;
 
   if (p.type==='wide') {
-    // metallic paddle + outward arrows
     ctx.fillStyle = '#9ea7b3';
     roundRect(ctx, -18, -6, 36, 12, 4); ctx.fill();
     ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
@@ -500,9 +539,8 @@ function drawParticles() {
   });
 }
 
-function draw(dt) {
+function draw() {
   ctx.fillStyle = '#000'; ctx.fillRect(0,0,cvs.width,cvs.height);
-  drawBackground();
   drawBricks();
   drawPaddle();
   drawBall();
@@ -523,12 +561,45 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.quadraticCurveTo(x, y+h, x, y+h-rr);
   ctx.lineTo(x, y+rr);
   ctx.quadraticCurveTo(x, y, x+rr, y);
-  // NOTE: caller must fill/stroke
+  // caller fills/strokes
 }
 function getCSS(name) { return getComputedStyle(document.body).getPropertyValue(name); }
+// ---- Color helpers (fixes missing shade error) ----
+function shade(cssColor, factor = 1.0) {
+  const hex = toHex(cssColor || '#00ffff');
+  let r = parseInt(hex.slice(1,3), 16);
+  let g = parseInt(hex.slice(3,5), 16);
+  let b = parseInt(hex.slice(5,7), 16);
+  r = Math.max(0, Math.min(255, Math.round(r * factor)));
+  g = Math.max(0, Math.min(255, Math.round(g * factor)));
+  b = Math.max(0, Math.min(255, Math.round(b * factor)));
+  return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+}
+function toHex(cssColor) {
+  const c = (cssColor || '').trim();
+  if (c.startsWith('#') && (c.length === 7 || c.length === 4)) return normalizeHex(c);
+  const m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+  if (m) {
+    const r = (+m[1]).toString(16).padStart(2,'0');
+    const g = (+m[2]).toString(16).padStart(2,'0');
+    const b = (+m[3]).toString(16).padStart(2,'0');
+    return `#${r}${g}${b}`;
+  }
+  return '#00ffff';
+}
+function normalizeHex(h) {
+  if (h.length === 4) {
+    const r = h[1], g = h[2], b = h[3];
+    return `#${r}${r}${g}${g}${b}${b}`;
+  }
+  return h;
+}
 function rgba(hexOrCss, alpha) {
-  // crude: if css var color, just return white w/alpha
-  return `rgba(255,255,255,${alpha})`;
+  const hex = toHex(hexOrCss);
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${alpha})`;
 }
 function getThemeName() {
   const c = document.body.className.split(' ').find(x=>x.startsWith('theme-')) || 'theme-galaxy';
@@ -539,12 +610,10 @@ function getThemeName() {
 function gameOver() {
   G.running = false;
   finalScore.textContent = G.score;
-  // Analytics
   bumpAnalytics('gamesPlayed', 1);
   bumpAnalytics('lastScore', G.score);
   bumpAnalytics('theme_'+getThemeName(), 1);
-  localStorage.setItem('dx2025_analytics', JSON.stringify(G.analytics));
-  // Leaderboard
+  localStorage.setItem('pb_analytics', JSON.stringify(G.analytics));
   pushLB(G.score, document.body.className.split(' ')[0] || 'theme-galaxy');
   modal.classList.remove('hidden');
 }
@@ -558,51 +627,8 @@ function bumpAnalytics(key, v) {
   else G.analytics[key] = v;
 }
 
-/* =================== INITIALIZE =================== */
+/* =================== INIT =================== */
 function initFromUI() {
   document.body.className = (themeSelect.value || 'theme-galaxy') + ' no-scroll';
 }
-// ---- Color helpers ----
-function shade(cssColor, factor = 1.0) {
-  // accepts hex (“#00ffaa”) or rgb/var -> returns hex string shaded by factor
-  const hex = toHex(cssColor || '#00ffff');
-  let r = parseInt(hex.slice(1,3), 16);
-  let g = parseInt(hex.slice(3,5), 16);
-  let b = parseInt(hex.slice(5,7), 16);
-  r = Math.max(0, Math.min(255, Math.round(r * factor)));
-  g = Math.max(0, Math.min(255, Math.round(g * factor)));
-  b = Math.max(0, Math.min(255, Math.round(b * factor)));
-  return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
-}
-function toHex(cssColor) {
-  // crude converter; if it's already hex, return as-is
-  const c = (cssColor || '').trim();
-  if (c.startsWith('#') && (c.length === 7 || c.length === 4)) return normalizeHex(c);
-  // rgb(a)
-  const m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
-  if (m) {
-    const r = (+m[1]).toString(16).padStart(2,'0');
-    const g = (+m[2]).toString(16).padStart(2,'0');
-    const b = (+m[3]).toString(16).padStart(2,'0');
-    return `#${r}${g}${b}`;
-  }
-  // fallback cyan
-  return '#00ffff';
-}
-function normalizeHex(h) {
-  if (h.length === 4) {
-    const r = h[1], g = h[2], b = h[3];
-    return `#${r}${r}${g}${g}${b}${b}`;
-  }
-  return h;
-}
-function rgba(hexOrCss, alpha) {
-  // used for ball trails; converts hex to rgba string
-  const hex = toHex(hexOrCss);
-  const r = parseInt(hex.slice(1,3),16);
-  const g = parseInt(hex.slice(3,5),16);
-  const b = parseInt(hex.slice(5,7),16);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-
 initFromUI();
