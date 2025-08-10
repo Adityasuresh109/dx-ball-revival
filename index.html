@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <!-- Lock zoom & fit device width -->
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
-  <title>AD Arcade: Retro DX Ball — 2025 Edition</title>
+  <title>AD Arcade - Paddle Ballz</title>
   <link rel="stylesheet" href="style.css" />
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
@@ -13,7 +13,7 @@
 <body class="theme-galaxy no-scroll">
   <!-- ===== HUD (fixed) ===== -->
   <header id="hud">
-    <div class="brand">AD Arcade: Retro DX Ball</div>
+    <div class="brand">AD Arcade - Paddle Ballz</div>
     <div class="stats">
       <span>Score: <strong id="score">0</strong></span>
       <span>Lives: <strong id="lives">3</strong></span>
@@ -29,6 +29,7 @@
       </select>
       <label class="toggle" title="Music"><input type="checkbox" id="musicToggle" checked /> 🎶</label>
       <label class="toggle" title="SFX"><input type="checkbox" id="sfxToggle" checked /> 🔊</label>
+      <label class="toggle" title="Tilt Control"><input type="checkbox" id="tiltToggle" /> 📱 Tilt</label>
       <button id="btnMenu" class="btn">☰ Menu</button>
       <button id="restartBtn" class="btn">↺ Restart</button>
     </div>
@@ -37,9 +38,8 @@
   <!-- ===== Viewport-filling game area ===== -->
   <main id="gameWrap">
     <canvas id="game"></canvas>
-    <!-- Ball trail is drawn on the same canvas; particles too -->
 
-    <!-- Countdown & fades -->
+    <!-- Fade & countdown -->
     <div id="fadeOverlay" class="hidden"></div>
     <div id="countdown" class="hidden">3</div>
 
@@ -48,8 +48,10 @@
       <div class="card">
         <h2>🏁 Game Over</h2>
         <p>Score: <span id="finalScore">0</span></p>
-        <button id="playAgain" class="btn">Play Again</button>
-        <button id="gotoMenu" class="btn">Main Menu</button>
+        <div class="row center">
+          <button id="playAgain" class="btn">Play Again</button>
+          <button id="gotoMenu" class="btn">Main Menu</button>
+        </div>
       </div>
     </div>
   </main>
@@ -57,7 +59,7 @@
   <!-- ===== Home Menu ===== -->
   <section id="home" class="screen visible">
     <div class="home-card glass">
-      <h1>Retro DX Ball — 2025</h1>
+      <h1>AD Arcade - Paddle Ballz</h1>
       <div class="row">
         <div class="col">
           <h3>Theme</h3>
@@ -97,9 +99,9 @@
     <div class="home-card glass">
       <h2>How to Play</h2>
       <ul class="bullets">
-        <li>Move the paddle with <b>← →</b> keys or tap/hold left/right side on mobile.</li>
-        <li>Ball <b>starts on the paddle</b>. After life loss, countdown resumes from the paddle.</li>
-        <li>Break all bricks to advance. Ball speed scales each level.</li>
+        <li>Move the paddle with <b>← →</b> keys, tap/hold left or right on mobile, or enable <b>📱 Tilt</b>.</li>
+        <li>Ball <b>starts on the paddle</b> (also after you lose a life).</li>
+        <li>Clear all bricks to advance; ball speed scales each level.</li>
       </ul>
       <h3>Legendary Boosters</h3>
       <div class="legend">
@@ -128,9 +130,7 @@
   </section>
 
   <!-- ===== Audio ===== -->
-  <audio id="bgm" loop preload="auto">
-    <source src="background.mp3" type="audio/mpeg"/>
-  </audio>
+  <audio id="bgm" loop preload="auto"><source src="background.mp3" type="audio/mpeg"/></audio>
   <audio id="sfxBrick" preload="auto"><source src="" type="audio/mpeg"/></audio>
   <audio id="sfxCatch" preload="auto"><source src="" type="audio/mpeg"/></audio>
   <audio id="sfxLife"  preload="auto"><source src="" type="audio/mpeg"/></audio>
