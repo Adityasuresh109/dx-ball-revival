@@ -4,47 +4,78 @@
   <meta charset="UTF-8" />
   <!-- Lock zoom & fit device width -->
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
-  <title>AD Arcade - Paddle Ballz</title>
+  <title>AD Arcade – Paddle Ballz</title>
   <link rel="stylesheet" href="style.css" />
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
   </style>
 </head>
-<body class="theme-galaxy no-scroll">
-  <!-- ===== HUD (fixed) ===== -->
-  <header id="hud">
-    <div class="brand">AD Arcade - Paddle Ballz</div>
-    <div class="stats">
+<body class="theme-neptune no-scroll">
+  <!-- ===== FIXED HUD ===== -->
+  <header id="hud" role="banner" aria-label="Game HUD">
+    <div class="brand">AD Arcade – Paddle Ballz</div>
+    <div class="stats" aria-live="polite">
       <span>Score: <strong id="score">0</strong></span>
       <span>Lives: <strong id="lives">3</strong></span>
       <span>Level: <strong id="level">1</strong></span>
       <span>High: <strong id="high">0</strong></span>
+      <span id="timerWrap" class="hidden">Time: <strong id="timer">60</strong></span>
     </div>
     <div class="controls">
       <select id="themeSelect" aria-label="Theme">
-        <option value="theme-galaxy" selected>🌌 Galaxy</option>
-        <option value="theme-neon">🌟 Neon</option>
-        <option value="theme-ice">❄️ Ice</option>
-        <option value="theme-inferno">🔥 Inferno</option>
+        <optgroup label="Planets">
+          <option value="theme-mercury">☿ Mercury</option>
+          <option value="theme-venus">♀ Venus</option>
+          <option value="theme-earth">⊕ Earth</option>
+          <option value="theme-mars">♂ Mars</option>
+          <option value="theme-jupiter">♃ Jupiter</option>
+          <option value="theme-saturn">♄ Saturn</option>
+          <option value="theme-uranus">♅ Uranus</option>
+          <option value="theme-neptune" selected>♆ Neptune</option>
+        </optgroup>
+        <optgroup label="Legacy">
+          <option value="theme-galaxy">Galaxy</option>
+          <option value="theme-neon">Neon</option>
+          <option value="theme-ice">Ice</option>
+          <option value="theme-inferno">Inferno</option>
+        </optgroup>
       </select>
+
+      <!-- Audio -->
       <label class="toggle" title="Music"><input type="checkbox" id="musicToggle" checked /> 🎶</label>
       <label class="toggle" title="SFX"><input type="checkbox" id="sfxToggle" checked /> 🔊</label>
-      <label class="toggle" title="Tilt Control"><input type="checkbox" id="tiltToggle" /> 📱 Tilt</label>
-      <button id="btnMenu" class="btn">☰ Menu</button>
+
+      <!-- Tilt Center -->
+      <div id="tiltCenter" class="tilt-center" role="group" aria-label="Tilt Controls">
+        <label class="toggle" title="Tilt Control"><input type="checkbox" id="tiltToggle" /> 📱 Tilt</label>
+        <button id="tiltCalibrate" class="btn" title="Calibrate tilt">⚙ Calibrate</button>
+        <label class="slider">
+          <span>Sens</span>
+          <input id="tiltSlider" type="range" min="0.5" max="2.0" step="0.1" value="1.0" />
+        </label>
+        <span id="tiltStatus" class="chip" aria-live="polite">Tilt: off</span>
+      </div>
+
+      <!-- Other -->
+      <label class="toggle" title="Reduce Motion"><input type="checkbox" id="reduceMotion" /> ✨−</label>
+      <button id="btnMenu" class="btn" aria-haspopup="true">☰ Menu</button>
       <button id="restartBtn" class="btn">↺ Restart</button>
     </div>
   </header>
 
-  <!-- ===== Viewport-filling game area ===== -->
-  <main id="gameWrap">
+  <!-- ===== GAME VIEWPORT (under HUD) ===== -->
+  <main id="gameWrap" role="main" aria-label="Game View">
+    <!-- Animated background canvas (separate layer for parallax/particles) -->
+    <canvas id="bg"></canvas>
+    <!-- Gameplay canvas (paddle, ball, bricks, powerups, particles) -->
     <canvas id="game"></canvas>
 
     <!-- Fade & countdown -->
-    <div id="fadeOverlay" class="hidden"></div>
-    <div id="countdown" class="hidden">3</div>
+    <div id="fadeOverlay" class="hidden" aria-hidden="true"></div>
+    <div id="countdown" class="hidden" aria-live="assertive">3</div>
 
     <!-- Game Over modal -->
-    <div id="modal" class="hidden" role="dialog" aria-modal="true">
+    <div id="modal" class="hidden" role="dialog" aria-modal="true" aria-label="Game Over">
       <div class="card">
         <h2>🏁 Game Over</h2>
         <p>Score: <span id="finalScore">0</span></p>
@@ -56,33 +87,46 @@
     </div>
   </main>
 
-  <!-- ===== Home Menu ===== -->
-  <section id="home" class="screen visible">
+  <!-- ===== HOME MENU ===== -->
+  <section id="home" class="screen visible" role="dialog" aria-modal="true" aria-label="Main Menu">
     <div class="home-card glass">
-      <h1>AD Arcade - Paddle Ballz</h1>
+      <h1>AD Arcade – Paddle Ballz</h1>
+
       <div class="row">
         <div class="col">
-          <h3>Theme</h3>
+          <h3>Planets</h3>
           <div class="theme-grid">
-            <button class="theme-thumb theme-galaxy selected" data-theme="theme-galaxy">Galaxy</button>
-            <button class="theme-thumb theme-neon" data-theme="theme-neon">Neon</button>
-            <button class="theme-thumb theme-ice" data-theme="theme-ice">Ice</button>
-            <button class="theme-thumb theme-inferno" data-theme="theme-inferno">Inferno</button>
+            <button class="theme-thumb theme-mercury" data-theme="theme-mercury">Mercury</button>
+            <button class="theme-thumb theme-venus" data-theme="theme-venus">Venus</button>
+            <button class="theme-thumb theme-earth" data-theme="theme-earth">Earth</button>
+            <button class="theme-thumb theme-mars" data-theme="theme-mars">Mars</button>
+            <button class="theme-thumb theme-jupiter" data-theme="theme-jupiter">Jupiter</button>
+            <button class="theme-thumb theme-saturn" data-theme="theme-saturn">Saturn</button>
+            <button class="theme-thumb theme-uranus" data-theme="theme-uranus">Uranus</button>
+            <button class="theme-thumb theme-neptune selected" data-theme="theme-neptune">Neptune</button>
           </div>
         </div>
+
         <div class="col">
           <h3>Mode</h3>
-          <select id="modeSelect">
+          <select id="modeSelect" aria-label="Game Mode">
             <option value="classic" selected>Classic</option>
             <option value="time">Time Attack (60s)</option>
             <option value="obstacles">Obstacles</option>
           </select>
+
           <h3>Difficulty</h3>
-          <select id="difficulty">
+          <select id="difficulty" aria-label="Difficulty">
             <option value="1" selected>Easy</option>
             <option value="1.3">Medium</option>
             <option value="1.6">Hard</option>
           </select>
+
+          <h3>Options</h3>
+          <label class="toggle"><input type="checkbox" id="menuMusic" checked /> Music</label>
+          <label class="toggle"><input type="checkbox" id="menuSfx" checked /> SFX</label>
+          <label class="toggle"><input type="checkbox" id="menuReduceMotion" /> Reduce Motion</label>
+          <label class="toggle"><input type="checkbox" id="menuTilt" /> Enable Tilt</label>
         </div>
       </div>
 
@@ -94,34 +138,43 @@
     </div>
   </section>
 
-  <!-- ===== Instructions ===== -->
-  <section id="instructions" class="screen">
+  <!-- ===== INSTRUCTIONS ===== -->
+  <section id="instructions" class="screen" role="dialog" aria-modal="true" aria-label="Instructions">
     <div class="home-card glass">
       <h2>How to Play</h2>
       <ul class="bullets">
         <li>Move the paddle with <b>← →</b> keys, tap/hold left or right on mobile, or enable <b>📱 Tilt</b>.</li>
-        <li>Ball <b>starts on the paddle</b> (also after you lose a life).</li>
-        <li>Clear all bricks to advance; ball speed scales each level.</li>
+        <li>The ball <b>starts on the paddle</b> (and after each lost life). Use the countdown to prepare.</li>
+        <li>Break all bricks to advance; speed scales with level and difficulty.</li>
       </ul>
+
       <h3>Legendary Boosters</h3>
       <div class="legend">
-        <div><span class="icon wide"></span> Wide Paddle</div>
-        <div><span class="icon life"></span> Extra Life</div>
-        <div><span class="icon slow"></span> Slow Ball</div>
-        <div><span class="icon multi"></span> Multi-Ball</div>
-        <div><span class="icon fire"></span> Fireball</div>
+        <div class="legend-item"><span class="icon wide" aria-hidden="true"></span> <b>Wide Paddle</b> — paddle extends temporarily.</div>
+        <div class="legend-item"><span class="icon life" aria-hidden="true"></span> <b>Extra Life</b> — gain one life.</div>
+        <div class="legend-item"><span class="icon slow" aria-hidden="true"></span> <b>Slow Ball</b> — ball speed reduced for a short time.</div>
+        <div class="legend-item"><span class="icon multi" aria-hidden="true"></span> <b>Multi-Ball</b> — bonus & burst effect (true multiball optional).</div>
+        <div class="legend-item"><span class="icon fire" aria-hidden="true"></span> <b>Fireball</b> — boosted impact / pierce window.</div>
       </div>
+
+      <h3>Tilt Control Tips</h3>
+      <ul class="bullets">
+        <li>Enable tilt in the HUD or menu; tap <b>Calibrate</b> while holding the phone naturally.</li>
+        <li>Adjust <b>Sensitivity</b> to taste. Status will show <i>Granted/Denied</i>.</li>
+        <li>On iOS, motion permission appears after tapping <b>Start</b>.</li>
+      </ul>
+
       <div class="row center">
         <button class="btn" id="backFromInstructions">← Back</button>
       </div>
     </div>
   </section>
 
-  <!-- ===== Leaderboard ===== -->
-  <section id="leaderboard" class="screen">
+  <!-- ===== LEADERBOARD ===== -->
+  <section id="leaderboard" class="screen" role="dialog" aria-modal="true" aria-label="Leaderboard">
     <div class="home-card glass">
       <h2>🏆 Trophy Hall</h2>
-      <ol id="lbList" class="leader-list"></ol>
+      <ol id="lbList" class="leader-list" aria-live="polite"></ol>
       <div class="row center">
         <button class="btn" id="clearLB">Clear</button>
         <button class="btn" id="backFromLB">← Back</button>
@@ -129,7 +182,7 @@
     </div>
   </section>
 
-  <!-- ===== Audio ===== -->
+  <!-- ===== AUDIO ===== -->
   <audio id="bgm" loop preload="auto"><source src="background.mp3" type="audio/mpeg"/></audio>
   <audio id="sfxBrick" preload="auto"><source src="" type="audio/mpeg"/></audio>
   <audio id="sfxCatch" preload="auto"><source src="" type="audio/mpeg"/></audio>
